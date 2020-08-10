@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using MySqlConnector.Logging;
 
 namespace MySqlConnector.Utilities
 {
 	internal sealed class TimerQueue
 	{
 		public static TimerQueue Instance = new();
+		private static readonly IMySqlConnectorLogger Log = MySqlConnectorLogManager.CreateLogger(nameof(TimerQueue));
 
 		/// <summary>
 		/// Adds a timer that will invoke <paramref name="action"/> in approximately <paramref name="delay"/> milliseconds.
@@ -76,7 +78,14 @@ namespace MySqlConnector.Utilities
 				// process all timers that have expired or will expire in the granularity of a clock tick
 				while (m_timeoutActions.Count > 0 && unchecked(m_timeoutActions[0].Time - current) < 15)
 				{
-					m_timeoutActions[0].Action();
+					try
+					{
+						m_timeoutActions[0].Action();
+					}
+					catch (Exception ex)
+					{
+						Log.Warn(ex, "Exception thrown by timequeue callback action.");
+					}
 					m_timeoutActions.RemoveAt(0);
 				}
 
