@@ -60,7 +60,7 @@ namespace MySqlConnector.Core
 		public uint LastReturnedTicks { get; private set; }
 		public string? DatabaseOverride { get; set; }
 		public string HostName { get; private set; }
-		public IPAddress? IPAddress => (m_tcpClient?.Client.RemoteEndPoint as IPEndPoint)?.Address;
+		public IPAddress? IPAddress => (m_tcpClient?.Client.Connected == true) ? (m_tcpClient?.Client.RemoteEndPoint as IPEndPoint)?.Address : null;
 		public WeakReference<MySqlConnection>? OwningConnection { get; set; }
 		public bool SupportsComMulti => m_supportsComMulti;
 		public bool SupportsDeprecateEof => m_supportsDeprecateEof;
@@ -1036,7 +1036,7 @@ namespace MySqlConnector.Core
 							await namedPipeStream.ConnectAsync(timeout, cancellationToken).ConfigureAwait(false);
 						else
 #endif
-							namedPipeStream.Connect(timeout);
+						namedPipeStream.Connect(timeout);
 					}
 					catch (Exception ex) when ((ex is ObjectDisposedException && cancellationToken.IsCancellationRequested) || ex is TimeoutException)
 					{
@@ -1169,7 +1169,8 @@ namespace MySqlConnector.Core
 #endif
 
 					m_clientCertificate = certificate;
-					clientCertificates = new() { certificate };
+					clientCertificates = new()
+					{ certificate };
 				}
 
 				catch (CryptographicException ex)
@@ -1196,7 +1197,8 @@ namespace MySqlConnector.Core
 							"CertificateFile should be in PKCS #12 (.pfx) format and contain both a Certificate and Private Key");
 					}
 					m_clientCertificate = certificate;
-					clientCertificates = new() { certificate };
+					clientCertificates = new()
+					{ certificate };
 				}
 				catch (CryptographicException ex)
 				{
