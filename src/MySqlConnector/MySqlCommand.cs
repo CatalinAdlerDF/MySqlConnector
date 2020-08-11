@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using MySqlConnector.Core;
 using MySqlConnector.Protocol.Serialization;
 using MySqlConnector.Utilities;
+using MySqlConnector.Logging;
 
 namespace MySqlConnector
 {
@@ -20,6 +21,7 @@ namespace MySqlConnector
 		, ICloneable
 #endif
 	{
+		private static readonly IMySqlConnectorLogger Log = MySqlConnectorLogManager.CreateLogger(nameof(MySqlCommand));
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MySqlCommand"/> class.
 		/// </summary>
@@ -94,7 +96,15 @@ namespace MySqlConnector
 		public new MySqlParameter CreateParameter() => (MySqlParameter) base.CreateParameter();
 
 		/// <inheritdoc/>
-		public override void Cancel() => Connection?.Cancel(this);
+		public override void Cancel()
+		{
+			if (m_isDisposed || Connection?.State != ConnectionState.Open)
+			{
+				Log.Warn("Current command cannot be cancelled b/c it's either disposed already or it's connection is not opened.");
+				return;//if it's disposed, no logic trying to cancel.
+			}
+			Connection?.Cancel(this);
+		}
 
 		/// <inheritdoc/>
 		public override int ExecuteNonQuery() => ExecuteNonQueryAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
