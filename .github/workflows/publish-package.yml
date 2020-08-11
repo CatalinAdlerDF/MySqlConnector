@@ -40,7 +40,7 @@ jobs:
       run: choco install nuget.commandline
 
     - name: Add NuGet source
-      run: nuget sources Add -Name "GPR" -Source "https://nuget.pkg.github.com/mysql-net/index.json" -UserName bgrainger -Password ${{ secrets.GITHUB_TOKEN }}
+      run: nuget sources Add -Name "GPR" -Source "https://nuget.pkg.github.com/CatalinAdlerDF/index.json" -UserName catalinadlerdf -Password ${{ secrets.GITHUB_TOKEN }}
 
     - name: Publish packages
       run: |
