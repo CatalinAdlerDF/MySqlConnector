@@ -9,6 +9,7 @@ using MySqlConnector.Core;
 using MySqlConnector.Protocol.Serialization;
 using MySqlConnector.Utilities;
 using MySqlConnector.Logging;
+using System.Runtime.CompilerServices;
 
 namespace MySqlConnector
 {
@@ -96,6 +97,7 @@ namespace MySqlConnector
 		public new MySqlParameter CreateParameter() => (MySqlParameter) base.CreateParameter();
 
 		/// <inheritdoc/>
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public override void Cancel()
 		{
 			if (m_isDisposed || Connection?.State != ConnectionState.Open)

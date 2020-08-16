@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Threading;
@@ -193,7 +194,7 @@ namespace MySqlConnector
 				else
 				{
 					m_enlistedTransaction = GetInitializedConnectionSettings().UseXaTransactions ?
-						(EnlistedTransactionBase)new XaEnlistedTransaction(transaction, this) :
+						(EnlistedTransactionBase) new XaEnlistedTransaction(transaction, this) :
 						new StandardEnlistedTransaction(transaction, this);
 					m_enlistedTransaction.Start();
 
@@ -340,7 +341,7 @@ namespace MySqlConnector
 			m_session.DatabaseOverride = databaseName;
 		}
 
-		public new MySqlCommand CreateCommand() => (MySqlCommand)base.CreateCommand();
+		public new MySqlCommand CreateCommand() => (MySqlCommand) base.CreateCommand();
 
 		public bool Ping() => PingAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 		public Task<bool> PingAsync(CancellationToken cancellationToken = default) => PingAsync(SimpleAsyncIOBehavior, cancellationToken).AsTask();
@@ -652,7 +653,7 @@ namespace MySqlConnector
 			{
 				VerifyNotDisposed();
 				if (m_session is null || State != ConnectionState.Open)
-					throw new InvalidOperationException("Connection must be Open; current state is {0}".FormatInvariant(State));
+					throw new InvalidOperationException("Connection must be Open; current state is {0}.".FormatInvariant(State));
 				return m_session;
 			}
 		}
@@ -661,29 +662,48 @@ namespace MySqlConnector
 
 		internal void Cancel(ICancellableCommand command)
 		{
-			var session = Session;
-			if (!session.TryStartCancel(command))
-				return;
-
 			try
 			{
-				// open a dedicated connection to the server to kill the active query
-				var csb = new MySqlConnectionStringBuilder(m_connectionString);
-				csb.Pooling = false;
-				if (m_session!.IPAddress is not null)
-					csb.Server = m_session.IPAddress.ToString();
-				csb.ConnectionTimeout = 3u;
+				var session = Session;
+				if (!session.TryStartCancel(command))
+					return;
 
-				using var connection = new MySqlConnection(csb.ConnectionString);
-				connection.Open();
-				using var killCommand = new MySqlCommand("KILL QUERY {0}".FormatInvariant(command.Connection!.ServerThread), connection);
-				session.DoCancel(command, killCommand);
+				try
+				{
+					// open a dedicated connection to the server to kill the active query
+					var csb = new MySqlConnectionStringBuilder(m_connectionString);
+					csb.Pooling = false;
+					if (m_session!.IPAddress is not null)
+						csb.Server = m_session.IPAddress.ToString();
+					csb.ConnectionTimeout = 3u;
+
+					using var connection = new MySqlConnection(csb.ConnectionString);
+					connection.Open();
+
+					using var killCommand = new MySqlCommand("KILL QUERY {0}".FormatInvariant(command.Connection!.ServerThread), connection);
+					session.DoCancel(command, killCommand);
+				}
+				catch (MySqlException ex)
+				{
+					// cancelling the query failed; setting the state back to 'Querying' will allow another call to 'Cancel' to try again
+					Log.Warn(ex, "Session{0} cancelling command {1} failed", m_session!.Id, command.CommandId);
+					session.AbortCancel(command);
+				}
 			}
-			catch (MySqlException ex)
+			catch (InvalidOperationException e)
 			{
-				// cancelling the query failed; setting the state back to 'Querying' will allow another call to 'Cancel' to try again
-				Log.Warn(ex, "Session{0} cancelling command {1} failed", m_session!.Id, command.CommandId);
-				session.AbortCancel(command);
+				switch (command)
+				{
+				case MySqlCommand mySqlCommand:
+					Log.Error(e, "Exception trying to cancel command {MySqlCommand}. Conn state {ConnectionStatus}, ",
+						mySqlCommand.CommandText, State);
+					break;
+
+				case MySqlBatch mySqlBatch:
+					Log.Error(e, "Exception trying to cancel mysql batch commands {BatchCommands}. Conn state {ConnectionStatus}, ",
+						string.Join(",", mySqlBatch.BatchCommands.Cast<MySqlBatchCommand>().Select(c => c.CommandText)), State);
+					break;
+				}
 			}
 		}
 

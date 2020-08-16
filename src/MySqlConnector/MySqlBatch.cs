@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using MySqlConnector.Core;
+using MySqlConnector.Logging;
 using MySqlConnector.Protocol.Serialization;
 using MySqlConnector.Utilities;
 
@@ -76,6 +77,8 @@ namespace MySqlConnector
 			m_commandId = ICancellableCommandExtensions.GetNextId();
 		}
 
+		private static readonly IMySqlConnectorLogger Log = MySqlConnectorLogManager.CreateLogger(nameof(MySqlBatch));
+
 		public MySqlConnection? Connection { get; set; }
 		public MySqlTransaction? Transaction { get; set; }
 
@@ -115,7 +118,7 @@ namespace MySqlConnector
 		private Task<MySqlDataReader> ExecuteReaderAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			if (!IsValid(out var exception))
-			 	return Utility.TaskFromException<MySqlDataReader>(exception);
+				return Utility.TaskFromException<MySqlDataReader>(exception);
 
 			foreach (var batchCommand in BatchCommands)
 				batchCommand.Batch = this;
@@ -150,7 +153,15 @@ namespace MySqlConnector
 
 		public Task PrepareAsync(CancellationToken cancellationToken = default) => PrepareAsync(AsyncIOBehavior, cancellationToken);
 
-		public void Cancel() => Connection?.Cancel(this);
+		public void Cancel()
+		{
+			if (m_isDisposed || Connection?.State != ConnectionState.Open)
+			{
+				Log.Warn("Current sql batch cannot be cancelled b/c is disposed or its connection is not opened.");
+				return;//if it's disposed, no logic trying to cancel.
+			}
+			Connection?.Cancel(this);
+		}
 
 		public void Dispose()
 		{
