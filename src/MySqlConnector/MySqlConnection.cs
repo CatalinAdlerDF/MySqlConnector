@@ -695,25 +695,32 @@ namespace MySqlConnector
 			catch (Exception e)
 			{
 				//We log regarless of exception type, just to help with diag.
-				switch (command)
+				try
 				{
-				case MySqlCommand mySqlCommand:
-					Log.Error(e, "Exception trying to cancel command {MySqlCommand}. Conn state {ConnectionStatus}, ",
-						mySqlCommand?.CommandText, State);
-					break;
-
-				case MySqlBatch mySqlBatch:
-					Log.Error(e, "Exception trying to cancel mysql batch commands {BatchCommands}. Conn state {ConnectionStatus}, ",
-						string.Join(",", mySqlBatch.BatchCommands?.Cast<MySqlBatchCommand>()?.Select(c => c.CommandText).Where(c => !string.IsNullOrEmpty(c)) ?? Enumerable.Empty<string>()), State);
-					break;
-				default:
-					Log.Error(e, "Exception trying to cancel an unknown type of command. Conn state {ConnectionStatus}, ",
-						State);
-					break;
+					switch (command)
+					{
+					case MySqlCommand mySqlCommand:
+						Log.Error(e, "Exception trying to cancel command {MySqlCommand}. Conn state {ConnectionStatus}, ",
+							mySqlCommand?.CommandText, State);
+						break;
+					case MySqlBatch mySqlBatch:
+						Log.Error(e, "Exception trying to cancel mysql batch commands {BatchCommands}. Conn state {ConnectionStatus}, ",
+							string.Join(",", mySqlBatch.BatchCommands?.Cast<MySqlBatchCommand>()?.Select(c => c?.CommandText).Where(c => !string.IsNullOrEmpty(c)) ?? Enumerable.Empty<string>()), State);
+						break;
+					default:
+						Log.Error(e, "Exception trying to cancel an unknown type of command. Conn state {ConnectionStatus}, ",
+							State);
+						break;
+					}
+					//We rethrow in case the exception is anything but the Session is closed, b/c we don't know what's going on.
+					if (e is not InvalidOperationException opex || !opex.Message.Contains("Connection must be Open"))
+					{
+						throw;
+					}
 				}
-				//We rethrow in case the exception is anything but the Session is closed, b/c we don't know what's going on.
-				if (e is not InvalidOperationException opex || !opex.Message.Contains("Connection must be Open"))
+				catch (Exception ee)
 				{
+					Log.Error(ee, "Exception thrown handling another exception.");
 					throw;
 				}
 			}

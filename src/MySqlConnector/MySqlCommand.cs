@@ -102,7 +102,7 @@ namespace MySqlConnector
 		{
 			if (m_isDisposed || Connection?.State != ConnectionState.Open)
 			{
-				Log.Warn("Current command cannot be cancelled b/c it's either disposed already or it's connection is not opened.");
+				Log.Warn("Current command cannot be cancelled b/c it's either disposed already or it's connection is not opened. {0}", CommandText);
 				return;//if it's disposed, no logic trying to cancel.
 			}
 			Connection?.Cancel(this);
