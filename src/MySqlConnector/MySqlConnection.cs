@@ -665,7 +665,7 @@ namespace MySqlConnector
 			try
 			{
 				Log.Info("Trying to cancel command {0} having timeout of {1}s executing since {2}.",
-					command switch { MySqlCommand cmd => cmd.CommandText, _ => string.Empty }, command.CommandTimeout, command.ExecutingSince - DateTimeOffset.UtcNow);
+					command switch { MySqlCommand cmd => cmd.CommandText, _ => string.Empty }, command.CommandTimeout, DateTimeOffset.UtcNow - command.ExecutingSince);
 
 				var session = Session;
 				if (!session.TryStartCancel(command))
