@@ -671,11 +671,13 @@ namespace MySqlConnector
 				try
 				{
 					// open a dedicated connection to the server to kill the active query
-					var csb = new MySqlConnectionStringBuilder(m_connectionString);
-					csb.Pooling = false;
+					var csb = new MySqlConnectionStringBuilder(m_connectionString)
+					{
+						Pooling = false,
+						ConnectionTimeout = 3u
+					};
 					if (m_session!.IPAddress is not null)
 						csb.Server = m_session.IPAddress.ToString();
-					csb.ConnectionTimeout = 3u;
 
 					using var connection = new MySqlConnection(csb.ConnectionString);
 					connection.Open();
@@ -690,8 +692,9 @@ namespace MySqlConnector
 					session.AbortCancel(command);
 				}
 			}
-			catch (InvalidOperationException e)
+			catch (Exception e)
 			{
+				//We log regarless of exception type, just to help with diag.
 				switch (command)
 				{
 				case MySqlCommand mySqlCommand:
@@ -703,6 +706,15 @@ namespace MySqlConnector
 					Log.Error(e, "Exception trying to cancel mysql batch commands {BatchCommands}. Conn state {ConnectionStatus}, ",
 						string.Join(",", mySqlBatch.BatchCommands?.Cast<MySqlBatchCommand>()?.Select(c => c.CommandText).Where(c => !string.IsNullOrEmpty(c)) ?? Enumerable.Empty<string>()), State);
 					break;
+				default:
+					Log.Error(e, "Exception trying to cancel an unknown type of command. Conn state {ConnectionStatus}, ",
+						State);
+					break;
+				}
+				//We rethrow in case the exception is anything but the Session is closed, b/c we don't know what's going on.
+				if (e is not InvalidOperationException opex || !opex.Message.Contains("Connection must be Open"))
+				{
+					throw;
 				}
 			}
 		}
