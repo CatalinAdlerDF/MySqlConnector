@@ -234,7 +234,7 @@ namespace MySqlConnector.Core
 				return new ValueTask<Row?>(default(Row?));
 
 			using var registration = Command.CancellableCommand.RegisterCancel(cancellationToken); // lgtm[cs/useless-assignment-to-local]
-			Log.Info("Registered cancel handler for command {0}.", Command.CommandText);
+			Log.Info("Registered cancel handler for command {0} with id {1}.", Command.CommandText, Command switch { ICancellableCommand cancellable => cancellable.CommandId, _ => string.Empty });
 			var payloadValueTask = Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None);
 			return payloadValueTask.IsCompletedSuccessfully
 				? new ValueTask<Row?>(ScanRowAsyncRemainder(this, payloadValueTask.Result, row))

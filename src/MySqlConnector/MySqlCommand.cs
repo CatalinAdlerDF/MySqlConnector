@@ -125,7 +125,7 @@ namespace MySqlConnector
 		{
 			if (m_isDisposed || Connection?.State != ConnectionState.Open)
 			{
-				Log.Warn("Current command cannot be cancelled b/c it's either disposed already or it's connection is not opened. {0}", CommandText);
+				Log.Warn("Current command cannot be safely cancelled b/c it's either disposed already or it's connection is not opened. {0}", CommandText);
 				return;//if it's disposed, no logic trying to cancel.
 			}
 
@@ -133,11 +133,11 @@ namespace MySqlConnector
 			try
 			{
 				Connection?.Cancel(this);
-				Log.Info("Cancelled command {0} in {1}.", CommandText, watch.Elapsed);
+				Log.Info("Safely cancelled command {0} in {1}.", CommandText, watch.Elapsed);
 			}
 			catch (Exception e)
 			{
-				Log.Error(e, "Failed cancelling command {0} in {1}.", CommandText, watch.Elapsed);
+				Log.Error(e, "Failed safely cancelling command {0} in {1}.", CommandText, watch.Elapsed);
 			}
 		}
 
