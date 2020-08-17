@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using MySqlConnector.Logging;
 using MySqlConnector.Protocol;
 using MySqlConnector.Protocol.Payloads;
 using MySqlConnector.Protocol.Serialization;
@@ -19,6 +20,8 @@ namespace MySqlConnector.Core
 		{
 			DataReader = dataReader;
 		}
+
+		static readonly IMySqlConnectorLogger Log = MySqlConnectorLogManager.CreateLogger(nameof(ResultSet));
 
 		public void Reset()
 		{
@@ -231,6 +234,7 @@ namespace MySqlConnector.Core
 				return new ValueTask<Row?>(default(Row?));
 
 			using var registration = Command.CancellableCommand.RegisterCancel(cancellationToken); // lgtm[cs/useless-assignment-to-local]
+			Log.Info("Registered cancel handler for command {0}.", Command.CommandText);
 			var payloadValueTask = Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None);
 			return payloadValueTask.IsCompletedSuccessfully
 				? new ValueTask<Row?>(ScanRowAsyncRemainder(this, payloadValueTask.Result, row))
@@ -245,6 +249,7 @@ namespace MySqlConnector.Core
 				}
 				catch (MySqlException ex)
 				{
+					Log.Error(ex, "Exception thrown reading next row.");
 					this_.BufferState = this_.State = ResultSetState.NoMoreData;
 					if (ex.ErrorCode == MySqlErrorCode.QueryInterrupted)
 						token.ThrowIfCancellationRequested();

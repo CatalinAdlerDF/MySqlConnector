@@ -10,6 +10,7 @@ using MySqlConnector.Protocol.Serialization;
 using MySqlConnector.Utilities;
 using MySqlConnector.Logging;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace MySqlConnector
 {
@@ -105,7 +106,39 @@ namespace MySqlConnector
 				Log.Warn("Current command cannot be cancelled b/c it's either disposed already or it's connection is not opened. {0}", CommandText);
 				return;//if it's disposed, no logic trying to cancel.
 			}
-			Connection?.Cancel(this);
+
+			var watch = Stopwatch.StartNew();
+			try
+			{
+				Connection?.Cancel(this);
+				Log.Info("Cancelled command {0} in {1}.", CommandText, watch.Elapsed);
+			}
+			catch (Exception e)
+			{
+				Log.Error(e, "Failed cancelling command {0} in {1}.", CommandText, watch.Elapsed);
+				throw;
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.NoInlining)]
+		public void TryCancel()
+		{
+			if (m_isDisposed || Connection?.State != ConnectionState.Open)
+			{
+				Log.Warn("Current command cannot be cancelled b/c it's either disposed already or it's connection is not opened. {0}", CommandText);
+				return;//if it's disposed, no logic trying to cancel.
+			}
+
+			var watch = Stopwatch.StartNew();
+			try
+			{
+				Connection?.Cancel(this);
+				Log.Info("Cancelled command {0} in {1}.", CommandText, watch.Elapsed);
+			}
+			catch (Exception e)
+			{
+				Log.Error(e, "Failed cancelling command {0} in {1}.", CommandText, watch.Elapsed);
+			}
 		}
 
 		/// <inheritdoc/>
@@ -366,7 +399,7 @@ namespace MySqlConnector
 			if (!token.CanBeCanceled)
 				return null;
 
-			m_cancelAction ??= Cancel;
+			m_cancelAction ??= TryCancel;
 			return token.Register(m_cancelAction);
 		}
 
