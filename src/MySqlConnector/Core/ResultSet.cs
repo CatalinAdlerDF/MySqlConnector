@@ -199,6 +199,9 @@ namespace MySqlConnector.Core
 
 		public async Task<bool> ReadAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
+			//no point reading if the cancellation was already requested.
+			cancellationToken.ThrowIfCancellationRequested();
+
 			m_row = m_readBuffer?.Count > 0 ? m_readBuffer.Dequeue() :
 				await ScanRowAsync(ioBehavior, m_row, cancellationToken).ConfigureAwait(false);
 
