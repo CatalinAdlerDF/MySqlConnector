@@ -13,6 +13,7 @@ namespace MySqlConnector.Core
 		int CommandTimeout { get; }
 		int CancelAttemptCount { get; set; }
 		MySqlConnection? Connection { get; }
+		DateTimeOffset? ExecutingSince { get; }
 		IDisposable? RegisterCancel(CancellationToken cancellationToken);
 	}
 

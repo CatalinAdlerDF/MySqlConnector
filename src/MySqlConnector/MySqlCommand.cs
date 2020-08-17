@@ -357,6 +357,7 @@ namespace MySqlConnector
 			if (!IsValid(out var exception))
 				return Utility.TaskFromException<MySqlDataReader>(exception);
 
+			executingSince = DateTimeOffset.UtcNow;
 			m_commandBehavior = behavior;
 			return CommandExecutor.ExecuteReaderAsync(new IMySqlCommand[] { this }, SingleCommandPayloadCreator.Instance, behavior, ioBehavior, cancellationToken);
 		}
@@ -433,6 +434,7 @@ namespace MySqlConnector
 		CommandBehavior IMySqlCommand.CommandBehavior => m_commandBehavior;
 		MySqlParameterCollection? IMySqlCommand.OutParameters { get; set; }
 		MySqlParameter? IMySqlCommand.ReturnParameter { get; set; }
+		public DateTimeOffset? ExecutingSince => executingSince;
 
 		readonly int m_commandId;
 		bool m_isDisposed;
@@ -443,5 +445,6 @@ namespace MySqlConnector
 		CommandType m_commandType;
 		CommandBehavior m_commandBehavior;
 		Action? m_cancelAction;
+		DateTimeOffset? executingSince;
 	}
 }

@@ -120,12 +120,15 @@ namespace MySqlConnector
 			if (!IsValid(out var exception))
 				return Utility.TaskFromException<MySqlDataReader>(exception);
 
+			executingSince = DateTimeOffset.UtcNow;
+
 			foreach (var batchCommand in BatchCommands)
 				batchCommand.Batch = this;
 
 			var payloadCreator = Connection!.Session.SupportsComMulti ? BatchedCommandPayloadCreator.Instance :
 				IsPrepared ? SingleCommandPayloadCreator.Instance :
 				ConcatenatedCommandPayloadCreator.Instance;
+
 			return CommandExecutor.ExecuteReaderAsync(BatchCommands!, payloadCreator, CommandBehavior.Default, ioBehavior, cancellationToken);
 		}
 
@@ -302,8 +305,11 @@ namespace MySqlConnector
 
 		private IOBehavior AsyncIOBehavior => Connection?.AsyncIOBehavior ?? IOBehavior.Asynchronous;
 
+		public DateTimeOffset? ExecutingSince => executingSince;
+
 		readonly int m_commandId;
 		bool m_isDisposed;
 		Action? m_cancelAction;
+		private DateTimeOffset? executingSince;
 	}
 }
