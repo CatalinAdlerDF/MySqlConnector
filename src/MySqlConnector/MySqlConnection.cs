@@ -696,12 +696,12 @@ namespace MySqlConnector
 				{
 				case MySqlCommand mySqlCommand:
 					Log.Error(e, "Exception trying to cancel command {MySqlCommand}. Conn state {ConnectionStatus}, ",
-						mySqlCommand.CommandText, State);
+						mySqlCommand?.CommandText, State);
 					break;
 
 				case MySqlBatch mySqlBatch:
 					Log.Error(e, "Exception trying to cancel mysql batch commands {BatchCommands}. Conn state {ConnectionStatus}, ",
-						string.Join(",", mySqlBatch.BatchCommands.Cast<MySqlBatchCommand>().Select(c => c.CommandText)), State);
+						string.Join(",", mySqlBatch.BatchCommands?.Cast<MySqlBatchCommand>()?.Select(c => c.CommandText).Where(c => !string.IsNullOrEmpty(c)) ?? Enumerable.Empty<string>()), State);
 					break;
 				}
 			}
