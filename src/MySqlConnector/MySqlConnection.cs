@@ -664,6 +664,8 @@ namespace MySqlConnector
 		{
 			try
 			{
+				Log.Info("Trying to cancel command {0}", command switch { MySqlCommand cmd => cmd.CommandText, _ => string.Empty });
+
 				var session = Session;
 				if (!session.TryStartCancel(command))
 					return;
@@ -697,6 +699,8 @@ namespace MySqlConnector
 				//We log regarless of exception type, just to help with diag.
 				try
 				{
+					Console.Error.Write(e.Message + Environment.NewLine + e.StackTrace);
+
 					switch (command)
 					{
 					case MySqlCommand mySqlCommand:
@@ -1005,16 +1009,17 @@ namespace MySqlConnector
 			{
 				if (m_session is not null)
 				{
+					var currentSession = m_session;
+					m_session = null;
 					if (GetInitializedConnectionSettings().Pooling)
 					{
-						m_session.ReturnToPool();
+						currentSession.ReturnToPool();
 					}
 					else
 					{
-						await m_session.DisposeAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-						m_session.OwningConnection = null;
+						await currentSession.DisposeAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+						currentSession.OwningConnection = null;
 					}
-					m_session = null;
 				}
 
 				if (changeState)
