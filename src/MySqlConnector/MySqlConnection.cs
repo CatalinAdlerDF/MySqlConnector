@@ -965,6 +965,7 @@ namespace MySqlConnector
 					SetState(ConnectionState.Closed);
 
 				await Utility.CompletedTask;
+				return;
 			}
 			Log.Debug("Closing connection");
 			await DoCloseAsync(changeState, ioBehavior);
