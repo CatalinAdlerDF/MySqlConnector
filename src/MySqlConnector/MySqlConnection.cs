@@ -615,6 +615,7 @@ namespace MySqlConnector
 		{
 			try
 			{
+				Log.Debug("Dispossing connection");
 				await CloseAsync(changeState: true, SimpleAsyncIOBehavior).ConfigureAwait(false);
 			}
 			finally
@@ -881,7 +882,7 @@ namespace MySqlConnector
 			}
 			catch (OperationCanceledException ex) when (timeoutSource?.IsCancellationRequested ?? false)
 			{
-				Log.Error(ex, "OperationCanceledException thrown while create a new mysql session.");
+				Log.Error(ex, $"OperationCanceledException thrown while creating a new mysql session. {linkedSource?.IsCancellationRequested}/{timeoutSource?.IsCancellationRequested}/{cancellationToken.IsCancellationRequested}");
 				var messageSuffix = (pool?.IsEmpty ?? false) ? " All pooled connections are in use." : "";
 				throw new MySqlException(MySqlErrorCode.UnableToConnectToHost, "Connect Timeout expired." + messageSuffix + $" Available count: {pool?.AvailableCount}.", ex);
 			}
@@ -891,7 +892,7 @@ namespace MySqlConnector
 			}
 			catch (Exception ex)
 			{
-				Log.Error(ex, "Exception thrown while create a new mysql session.");
+				Log.Error(ex, "Exception thrown while creating a new mysql session.");
 				throw;
 			}
 			finally
@@ -949,18 +950,23 @@ namespace MySqlConnector
 #endif
 				(m_connectionSettings?.Pooling ?? false))
 			{
+				Log.Debug("Closing connection on fastpath");
 				m_cachedProcedures = null;
 				if (m_session is not null)
 				{
 					await m_session.ReturnToPoolAsync();
 					m_session = null;
 				}
+				else
+				{
+					Log.Warn("Connection not returned to the pool since the session is null.");
+				}
 				if (changeState)
 					SetState(ConnectionState.Closed);
 
 				await Utility.CompletedTask;
 			}
-
+			Log.Debug("Closing connection");
 			await DoCloseAsync(changeState, ioBehavior);
 		}
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Authentication;
 using System.Threading;
@@ -165,6 +166,7 @@ namespace MySqlConnector.Core
 
 		public async Task ReturnAsync(ServerSession session)
 		{
+			var watch = Stopwatch.StartNew();
 			if (Log.IsDebugEnabled())
 				Log.Debug("Pool{0} receiving Session{1} back", m_logArguments[0], session.Id);
 
@@ -182,9 +184,9 @@ namespace MySqlConnector.Core
 				else
 				{
 					if (sessionHealth == 1)
-						Log.Warn("Pool{0} received invalid Session{1}; destroying it", m_logArguments[0], session.Id);
+						Log.Warn("Pool{0} received invalid Session{1} ({2}); destroying it", m_logArguments[0], session.Id, sessionHealth);
 					else
-						Log.Info("Pool{0} received expired Session{1}; destroying it", m_logArguments[0], session.Id);
+						Log.Info("Pool{0} received expired Session{1} ({2}); destroying it", m_logArguments[0], session.Id, sessionHealth);
 					AdjustHostConnectionCount(session, -1);
 					await session.DisposeAsync(IOBehavior.Asynchronous, CancellationToken.None);
 				}
@@ -192,6 +194,7 @@ namespace MySqlConnector.Core
 			finally
 			{
 				m_sessionSemaphore.Release();
+				Log.Debug("Finished returning session to pool in {0}. Curent available sessions {1}.", watch.Elapsed, AvailableCount);
 			}
 		}
 
