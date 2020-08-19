@@ -147,6 +147,8 @@ namespace MySqlConnector.Core
 		/// </summary>
 		internal bool IsEmpty => m_sessionSemaphore.CurrentCount == 0;
 
+		internal int AvailableCount => m_sessionSemaphore.CurrentCount;
+
 		// Returns zero for healthy, non-zero otherwise.
 		private int GetSessionHealth(ServerSession session)
 		{
@@ -159,6 +161,38 @@ namespace MySqlConnector.Core
 				return 3;
 
 			return 0;
+		}
+
+		public async Task ReturnAsync(ServerSession session)
+		{
+			if (Log.IsDebugEnabled())
+				Log.Debug("Pool{0} receiving Session{1} back", m_logArguments[0], session.Id);
+
+			try
+			{
+				lock (m_leasedSessions)
+					m_leasedSessions.Remove(session.Id);
+				session.OwningConnection = null;
+				var sessionHealth = GetSessionHealth(session);
+				if (sessionHealth == 0)
+				{
+					lock (m_sessions)
+						m_sessions.AddFirst(session);
+				}
+				else
+				{
+					if (sessionHealth == 1)
+						Log.Warn("Pool{0} received invalid Session{1}; destroying it", m_logArguments[0], session.Id);
+					else
+						Log.Info("Pool{0} received expired Session{1}; destroying it", m_logArguments[0], session.Id);
+					AdjustHostConnectionCount(session, -1);
+					await session.DisposeAsync(IOBehavior.Asynchronous, CancellationToken.None);
+				}
+			}
+			finally
+			{
+				m_sessionSemaphore.Release();
+			}
 		}
 
 		public void Return(ServerSession session)

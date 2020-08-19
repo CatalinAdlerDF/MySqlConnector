@@ -78,6 +78,20 @@ namespace MySqlConnector.Core
 			Pool?.Return(this);
 		}
 
+		public async Task ReturnToPoolAsync()
+		{
+			if (Log.IsDebugEnabled())
+			{
+				m_logArguments[1] = Pool?.Id;
+				Log.Debug("Session{0} returning to Pool{1}", m_logArguments);
+			}
+			LastReturnedTicks = unchecked((uint) Environment.TickCount);
+			if (Pool != null)
+			{
+				await Pool.ReturnAsync(this);
+			}
+		}
+
 		public bool IsConnected
 		{
 			get

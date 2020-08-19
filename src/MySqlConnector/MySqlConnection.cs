@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.Sockets;
@@ -843,6 +844,7 @@ namespace MySqlConnector
 
 		private async ValueTask<ServerSession> CreateSessionAsync(ConnectionPool? pool, int startTickCount, IOBehavior? ioBehavior, CancellationToken cancellationToken)
 		{
+			var watch = Stopwatch.StartNew();
 			var connectionSettings = GetInitializedConnectionSettings();
 			var actualIOBehavior = ioBehavior ?? (connectionSettings.ForceSynchronous ? IOBehavior.Synchronous : IOBehavior.Asynchronous);
 
@@ -879,17 +881,24 @@ namespace MySqlConnector
 			}
 			catch (OperationCanceledException ex) when (timeoutSource?.IsCancellationRequested ?? false)
 			{
+				Log.Error(ex, "OperationCanceledException thrown while create a new mysql session.");
 				var messageSuffix = (pool?.IsEmpty ?? false) ? " All pooled connections are in use." : "";
-				throw new MySqlException(MySqlErrorCode.UnableToConnectToHost, "Connect Timeout expired." + messageSuffix, ex);
+				throw new MySqlException(MySqlErrorCode.UnableToConnectToHost, "Connect Timeout expired." + messageSuffix + $" Available count: {pool?.AvailableCount}.", ex);
 			}
 			catch (MySqlException ex) when ((timeoutSource?.IsCancellationRequested ?? false) || (ex.ErrorCode == MySqlErrorCode.CommandTimeoutExpired))
 			{
 				throw new MySqlException(MySqlErrorCode.UnableToConnectToHost, "Connect Timeout expired.", ex);
 			}
+			catch (Exception ex)
+			{
+				Log.Error(ex, "Exception thrown while create a new mysql session.");
+				throw;
+			}
 			finally
 			{
 				linkedSource?.Dispose();
 				timeoutSource?.Dispose();
+				Log.Info($"Finished getting sql connection in {watch.Elapsed}.");
 			}
 		}
 
@@ -930,7 +939,7 @@ namespace MySqlConnector
 				throw new ObjectDisposedException(GetType().Name);
 		}
 
-		private Task CloseAsync(bool changeState, IOBehavior ioBehavior)
+		private async Task CloseAsync(bool changeState, IOBehavior ioBehavior)
 		{
 			// check fast path
 			if (m_activeReader is null &&
@@ -943,16 +952,16 @@ namespace MySqlConnector
 				m_cachedProcedures = null;
 				if (m_session is not null)
 				{
-					m_session.ReturnToPool();
+					await m_session.ReturnToPoolAsync();
 					m_session = null;
 				}
 				if (changeState)
 					SetState(ConnectionState.Closed);
 
-				return Utility.CompletedTask;
+				await Utility.CompletedTask;
 			}
 
-			return DoCloseAsync(changeState, ioBehavior);
+			await DoCloseAsync(changeState, ioBehavior);
 		}
 
 		private async Task DoCloseAsync(bool changeState, IOBehavior ioBehavior)
@@ -1014,7 +1023,7 @@ namespace MySqlConnector
 					m_session = null;
 					if (GetInitializedConnectionSettings().Pooling)
 					{
-						currentSession.ReturnToPool();
+						await currentSession.ReturnToPoolAsync().ConfigureAwait(false);
 					}
 					else
 					{
