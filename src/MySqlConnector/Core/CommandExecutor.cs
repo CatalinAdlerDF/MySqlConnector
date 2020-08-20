@@ -53,7 +53,8 @@ namespace MySqlConnector.Core
 
 			using var payload = writer.ToPayloadData();
 			using var registration = command.CancellableCommand.RegisterCancel(cancellationToken); // lgtm[cs/useless-assignment-to-local]
-			Log.Info("Registered cancellation handler for command {0} with id {1}.", command.CommandText, command switch { ICancellableCommand cancellable => cancellable.CommandId, _ => string.Empty });
+			Log.Info("Registered cancellation handler for command {0} on Session{1} with id {2}.",
+				command.CommandText, command.Connection?.Session?.Id, command switch { ICancellableCommand cancellable => cancellable.CommandId, _ => string.Empty });
 			connection.Session.StartQuerying(command.CancellableCommand);
 			command.SetLastInsertedId(-1);
 			try
@@ -72,6 +73,11 @@ namespace MySqlConnector.Core
 				// use "decimal megabytes" (to round up) when creating the exception message
 				int megabytes = payload.Span.Length / 1_000_000;
 				throw new MySqlException("Error submitting {0}MB packet; ensure 'max_allowed_packet' is greater than {0}MB.".FormatInvariant(megabytes), ex);
+			}
+			finally
+			{
+				Log.Debug("Done executing data reader for comand {0} on Session{1}.",
+					command.CommandText, command.Connection?.Session?.Id);
 			}
 		}
 

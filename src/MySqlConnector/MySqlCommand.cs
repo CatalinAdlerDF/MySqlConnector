@@ -358,6 +358,7 @@ namespace MySqlConnector
 				return Utility.TaskFromException<MySqlDataReader>(exception);
 
 			executingSince = DateTimeOffset.UtcNow;
+			Log.Info("Excuting sql command reader {0} on Session{1}", CommandText, m_connection?.Session?.Id);
 			m_commandBehavior = behavior;
 			return CommandExecutor.ExecuteReaderAsync(new IMySqlCommand[] { this }, SingleCommandPayloadCreator.Instance, behavior, ioBehavior, cancellationToken);
 		}
