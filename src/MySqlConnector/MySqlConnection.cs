@@ -615,7 +615,7 @@ namespace MySqlConnector
 		{
 			try
 			{
-				Log.Debug("Dispossing connection");
+				Log.Debug("Dispossing connection with Session{0} and server thread {1}.", m_session?.Id, m_session?.ConnectionId);
 				await CloseAsync(changeState: true, SimpleAsyncIOBehavior).ConfigureAwait(false);
 			}
 			finally
