@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MySqlConnector.Core;
+using MySqlConnector.Logging;
 using MySqlConnector.Protocol.Serialization;
 using MySqlConnector.Utilities;
 
@@ -20,6 +22,8 @@ namespace MySqlConnector
 		, IDbColumnSchemaGenerator
 #endif
 	{
+		static readonly IMySqlConnectorLogger Log = MySqlConnectorLogManager.CreateLogger(nameof(MySqlDataReader));
+
 		public override bool NextResult()
 		{
 			Command?.CancellableCommand.ResetCommandTimeout();
@@ -551,31 +555,40 @@ namespace MySqlConnector
 			if (!m_closed)
 			{
 				m_closed = true;
+				var watch = Stopwatch.StartNew();
 
-				if (m_resultSet is not null && Command!.Connection!.State == ConnectionState.Open)
+				try
 				{
-					Command.Connection.Session.SetTimeout(Constants.InfiniteTimeout);
-					try
+					if (m_resultSet is not null && Command!.Connection!.State == ConnectionState.Open)
 					{
-						while (await NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
+						Command.Connection.Session.SetTimeout(Constants.InfiniteTimeout);
+						try
 						{
+							while (await NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
+							{
+							}
 						}
+						catch (MySqlException ex) when (ex.ErrorCode == MySqlErrorCode.QueryInterrupted)
+						{
+							// ignore "Query execution was interrupted" exceptions when closing a data reader
+						}
+						m_resultSet = null;
 					}
-					catch (MySqlException ex) when (ex.ErrorCode == MySqlErrorCode.QueryInterrupted)
-					{
-						// ignore "Query execution was interrupted" exceptions when closing a data reader
-					}
-					m_resultSet = null;
+
+					m_hasMoreResults = false;
+
+					var connection = Command!.Connection!;
+					connection.FinishQuerying(m_hasWarnings);
+
+					if ((m_behavior & CommandBehavior.CloseConnection) != 0)
+						await connection.CloseAsync(ioBehavior).ConfigureAwait(false);
+					Command = null;
 				}
-
-				m_hasMoreResults = false;
-
-				var connection = Command!.Connection!;
-				connection.FinishQuerying(m_hasWarnings);
-
-				if ((m_behavior & CommandBehavior.CloseConnection) != 0)
-					await connection.CloseAsync(ioBehavior).ConfigureAwait(false);
-				Command = null;
+				finally
+				{
+					Log.Debug("Finished disposing mysqldatareader for command {0} on Session {1} in {2}.",
+						Command?.CommandText, Command?.Connection?.Session?.Id, watch.Elapsed);
+				}
 			}
 		}
 
