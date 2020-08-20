@@ -53,14 +53,18 @@ namespace MySqlConnector.Core
 
 			using var payload = writer.ToPayloadData();
 			using var registration = command.CancellableCommand.RegisterCancel(cancellationToken); // lgtm[cs/useless-assignment-to-local]
+			var sessionId = command.Connection?.Session?.Id;
 			Log.Info("Registered cancellation handler for command {0} on Session{1} with id {2}.",
-				command.CommandText, command.Connection?.Session?.Id, command switch { ICancellableCommand cancellable => cancellable.CommandId, _ => string.Empty });
+				command.CommandText, sessionId, command switch { ICancellableCommand cancellable => cancellable.CommandId, _ => string.Empty });
 			connection.Session.StartQuerying(command.CancellableCommand);
 			command.SetLastInsertedId(-1);
 			try
 			{
 				await connection.Session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
-				return await MySqlDataReader.CreateAsync(commandListPosition, payloadCreator, cachedProcedures, command, behavior, ioBehavior, cancellationToken).ConfigureAwait(false);
+				Log.Debug("Sent command {0} to mysql on Session{1}.", command.CommandText, sessionId);
+				var reader = await MySqlDataReader.CreateAsync(commandListPosition, payloadCreator, cachedProcedures, command, behavior, ioBehavior, cancellationToken).ConfigureAwait(false);
+				Log.Debug("Returning reader for command {0} on Session{1}.", command.CommandText, sessionId);
+				return reader;
 			}
 			catch (MySqlException ex) when (ex.ErrorCode == MySqlErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested)
 			{
@@ -74,10 +78,14 @@ namespace MySqlConnector.Core
 				int megabytes = payload.Span.Length / 1_000_000;
 				throw new MySqlException("Error submitting {0}MB packet; ensure 'max_allowed_packet' is greater than {0}MB.".FormatInvariant(megabytes), ex);
 			}
+			catch (Exception e)
+			{
+				Log.Error(e, "Exception thrown executing reader for Session{0}.", sessionId);
+				throw;
+			}
 			finally
 			{
-				Log.Debug("Done executing data reader for comand {0} on Session{1}.",
-					command.CommandText, command.Connection?.Session?.Id);
+				Log.Debug("Done executing data reader for command {0} on Session{1}. Curent Command's session is", command.CommandText, sessionId, command.Connection?.Session?.Id);
 			}
 		}
 
