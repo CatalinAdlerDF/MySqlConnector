@@ -950,7 +950,7 @@ namespace MySqlConnector
 #endif
 				(m_connectionSettings?.Pooling ?? false))
 			{
-				Log.Debug("Closing connection on fastpath");
+				Log.Debug("Closing connection with Session{0} on fastpath", m_session?.Id);
 				m_cachedProcedures = null;
 				if (m_session is not null)
 				{
@@ -967,7 +967,7 @@ namespace MySqlConnector
 				await Utility.CompletedTask;
 				return;
 			}
-			Log.Debug("Closing connection");
+			Log.Debug("Closing connection with Session{0}", m_session?.Id);
 			await DoCloseAsync(changeState, ioBehavior);
 		}
 
@@ -1030,13 +1030,19 @@ namespace MySqlConnector
 					m_session = null;
 					if (GetInitializedConnectionSettings().Pooling)
 					{
+						Log.Debug("Returning current connection's Session{0} to pool.", currentSession.Id);
 						await currentSession.ReturnToPoolAsync().ConfigureAwait(false);
 					}
 					else
 					{
+						Log.Debug("Disposing current connection's Session{0}.", currentSession.Id);
 						await currentSession.DisposeAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 						currentSession.OwningConnection = null;
 					}
+				}
+				else
+				{
+					Log.Warn("Current connection's Session{0} is null while closing connection.");
 				}
 
 				if (changeState)
@@ -1051,7 +1057,10 @@ namespace MySqlConnector
 #endif
 		{
 			if (m_activeReader is not null)
+			{
+				Log.Debug("Disposing the current connection's active data reader. Session{0}.", m_session?.Id);
 				await m_activeReader.DisposeAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			}
 			if (CurrentTransaction is not null && m_session!.IsConnected)
 			{
 				await CurrentTransaction.DisposeAsync(ioBehavior, cancellationToken).ConfigureAwait(false);

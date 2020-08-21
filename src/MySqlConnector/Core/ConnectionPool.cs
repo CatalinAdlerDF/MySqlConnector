@@ -217,9 +217,9 @@ namespace MySqlConnector.Core
 				else
 				{
 					if (sessionHealth == 1)
-						Log.Warn("Pool{0} received invalid Session{1}; destroying it", m_logArguments[0], session.Id);
+						Log.Warn("Pool{0} received invalid Session{1}; destroying it; health code {2}.", m_logArguments[0], session.Id, sessionHealth);
 					else
-						Log.Info("Pool{0} received expired Session{1}; destroying it", m_logArguments[0], session.Id);
+						Log.Info("Pool{0} received expired Session{1}; destroying it; health code {2}.", m_logArguments[0], session.Id, sessionHealth);
 					AdjustHostConnectionCount(session, -1);
 					session.DisposeAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 				}
