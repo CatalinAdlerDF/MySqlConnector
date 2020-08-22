@@ -44,16 +44,19 @@ namespace MySqlConnector.Core
 		public async Task ReadResultSetHeaderAsync(IOBehavior ioBehavior)
 		{
 			Reset();
+			Log.Debug("Reset resultset for Session{0}.", Session.Id);
 
 			try
 			{
 				while (true)
 				{
 					var payload = await Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+					Log.Debug("Received payload for resultset on Session{0}", Session.Id);
 
 					var firstByte = payload.HeaderByte;
 					if (firstByte == OkPayload.Signature)
 					{
+						Log.Debug("Received OkPayload.Signature bytes on results set on Session{0}", Session.Id);
 						var ok = OkPayload.Create(payload.Span, Session.SupportsDeprecateEof, Session.SupportsSessionTrack);
 						RecordsAffected = (RecordsAffected ?? 0) + ok.AffectedRowCount;
 						LastInsertId = unchecked((long) ok.LastInsertId);
@@ -72,6 +75,8 @@ namespace MySqlConnector.Core
 					{
 						try
 						{
+							Log.Debug("Received LocalInfilePayload.Signature bytes on results set on Session{0}", Session.Id);
+
 							if (!Connection.AllowLoadLocalInfile)
 								throw new NotSupportedException("To use LOAD DATA LOCAL INFILE, set AllowLoadLocalInfile=true in the connection string. See https://fl.vu/mysql-load-data");
 							var localInfile = LocalInfilePayload.Create(payload.Span);
@@ -88,6 +93,7 @@ namespace MySqlConnector.Core
 								var buffer = ArrayPool<byte>.Shared.Rent(1048576);
 								try
 								{
+									Log.Debug("Stream on Session{0}", Session.Id);
 									int byteCount;
 									while ((byteCount = await stream.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false)) > 0)
 									{
@@ -103,9 +109,11 @@ namespace MySqlConnector.Core
 								break;
 
 							case MySqlBulkCopy bulkCopy:
-								await bulkCopy.SendDataReaderAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-								break;
-
+								{
+									Log.Debug("MySqlBulkCopy on Session{0}", Session.Id);
+									await bulkCopy.SendDataReaderAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+									break;
+								}
 							default:
 								throw new InvalidOperationException("Unsupported Source type: {0}".FormatInvariant(source.GetType().Name));
 							}
@@ -116,6 +124,7 @@ namespace MySqlConnector.Core
 							ReadResultSetHeaderException = new("Error during LOAD DATA LOCAL INFILE", ex);
 						}
 
+						Log.Debug("Sending empty reply on Session{0}.", Session.Id);
 						await Session.SendReplyAsync(EmptyPayload.Instance, ioBehavior, CancellationToken.None).ConfigureAwait(false);
 					}
 					else
@@ -238,7 +247,7 @@ namespace MySqlConnector.Core
 				return new ValueTask<Row?>(default(Row?));
 
 			using var registration = Command.CancellableCommand.RegisterCancel(cancellationToken); // lgtm[cs/useless-assignment-to-local]
-		//	Log.Info("Registered cancel handler for command {0} with id {1}.", Command.CommandText, Command switch { ICancellableCommand cancellable => cancellable.CommandId, _ => string.Empty });
+																								   //	Log.Info("Registered cancel handler for command {0} with id {1}.", Command.CommandText, Command switch { ICancellableCommand cancellable => cancellable.CommandId, _ => string.Empty });
 			var payloadValueTask = Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None);
 			return payloadValueTask.IsCompletedSuccessfully
 				? new ValueTask<Row?>(ScanRowAsyncRemainder(this, payloadValueTask.Result, row))

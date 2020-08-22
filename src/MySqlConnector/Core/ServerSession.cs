@@ -823,6 +823,7 @@ namespace MySqlConnector.Core
 		// Continues a conversation with the server by sending a reply to a packet received with 'Receive' or 'ReceiveReply'.
 		public ValueTask<int> SendReplyAsync(PayloadData payload, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
+			Log.Debug("Sending reply on Session{0}.", Id);
 			ValueTask<int> task;
 			try
 			{
@@ -845,10 +846,12 @@ namespace MySqlConnector.Core
 		{
 			try
 			{
+				Log.Debug("Awaiting sending reply on Session{0}.", Id);
 				return await task.ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
+				Log.Error(ex, "Exception thrown while awaiting sending a reply on Session{0}.", Id);
 				SetFailed(ex);
 				throw;
 			}
