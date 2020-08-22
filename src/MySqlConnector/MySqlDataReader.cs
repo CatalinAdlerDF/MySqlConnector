@@ -424,13 +424,18 @@ namespace MySqlConnector
 				await dataReader.m_resultSet!.ReadResultSetHeaderAsync(ioBehavior).ConfigureAwait(false);
 				dataReader.ActivateResultSet();
 				dataReader.m_hasMoreResults = true;
+				Log.Debug("Read resultset header for command {0} on Session{1}.", command?.CommandText, command?.Connection?.Session.Id);
 
 				if (dataReader.m_resultSet.ContainsCommandParameters)
+				{
+					Log.Debug("Reading out command parameters for command {0} on Session{ 1}.", command?.CommandText, command?.Connection?.Session.Id);
 					await ReadOutParametersAsync(dataReader.Command!, dataReader.m_resultSet, ioBehavior, cancellationToken).ConfigureAwait(false);
+				}
 
 				// if the command list has multiple commands, keep reading until a result set is found
 				while (dataReader.m_resultSet.State == ResultSetState.NoMoreData && commandListPosition.CommandIndex < commandListPosition.Commands.Count)
 				{
+					Log.Debug("Moving to next result on the command {0} on Session{1}.", command?.CommandText, command?.Connection?.Session.Id);
 					await dataReader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 				}
 			}
@@ -440,6 +445,7 @@ namespace MySqlConnector
 				throw;
 			}
 
+			Log.Debug("Returning newly created reader for command {0} on Session{1}.", command?.CommandText, command?.Connection?.Session.Id);
 			return dataReader;
 		}
 

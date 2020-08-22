@@ -169,6 +169,7 @@ namespace MySqlConnector.Core
 			}
 			catch (Exception ex)
 			{
+				Log.Error(ex, "Exception thrown while reading ResultSet header.");
 				ReadResultSetHeaderException = ex;
 			}
 			finally
