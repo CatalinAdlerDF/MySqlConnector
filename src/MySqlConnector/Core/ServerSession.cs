@@ -1158,6 +1158,7 @@ namespace MySqlConnector.Core
 					RSA rsa;
 					try
 					{
+#pragma warning disable CA1416
 						// SslStream on Windows needs a KeyContainerName to be set
 						var csp = new CspParameters
 						{
@@ -1167,6 +1168,7 @@ namespace MySqlConnector.Core
 						{
 							PersistKeyInCsp = true,
 						};
+#pragma warning restore
 					}
 					catch (PlatformNotSupportedException)
 					{
