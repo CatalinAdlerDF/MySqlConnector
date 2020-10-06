@@ -25,6 +25,8 @@ namespace MySqlConnector.Utilities
 			lock (m_lock)
 			{
 				var id = unchecked(++m_counter);
+				if (id == 0)
+					id = ++m_counter;
 
 				// insert this callback in the list ascending tick-count order
 				var index = m_timeoutActions.Count;
@@ -71,12 +73,10 @@ namespace MySqlConnector.Utilities
 
 		private void Callback(object? obj)
 		{
-			var current = Environment.TickCount;
-
 			lock (m_lock)
 			{
 				// process all timers that have expired or will expire in the granularity of a clock tick
-				while (m_timeoutActions.Count > 0 && unchecked(m_timeoutActions[0].Time - current) < 15)
+				while (m_timeoutActions.Count > 0 && unchecked(m_timeoutActions[0].Time - Environment.TickCount) < 15)
 				{
 					try
 					{

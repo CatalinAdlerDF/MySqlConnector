@@ -60,6 +60,11 @@ namespace MySqlConnector
 		/// <remarks>Transactions may not be nested.</remarks>
 		public MySqlTransaction BeginTransaction(IsolationLevel isolationLevel, bool isReadOnly) => BeginTransactionAsync(isolationLevel, isReadOnly, IOBehavior.Synchronous, default).GetAwaiter().GetResult();
 
+		/// <summary>
+		/// Begins a database transaction.
+		/// </summary>
+		/// <param name="isolationLevel">The <see cref="IsolationLevel"/> for the transaction.</param>
+		/// <returns>A <see cref="MySqlTransaction"/> representing the new database transaction.</returns>
 		protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => BeginTransactionAsync(isolationLevel, default, IOBehavior.Synchronous, default).GetAwaiter().GetResult();
 
 #if NET45 || NET461 || NET471 || NETSTANDARD1_3 || NETSTANDARD2_0 || NETCOREAPP2_1
@@ -117,6 +122,12 @@ namespace MySqlConnector
 		/// <remarks>Transactions may not be nested.</remarks>
 		public ValueTask<MySqlTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, bool isReadOnly, CancellationToken cancellationToken = default) => BeginTransactionAsync(isolationLevel, isReadOnly, AsyncIOBehavior, cancellationToken);
 
+		/// <summary>
+		/// Begins a database transaction asynchronously.
+		/// </summary>
+		/// <param name="isolationLevel">The <see cref="IsolationLevel"/> for the transaction.</param>
+		/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+		/// <returns>A <see cref="ValueTask{DbTransaction}"/> representing the new database transaction.</returns>
 		protected override async ValueTask<DbTransaction> BeginDbTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken) =>
 			await BeginTransactionAsync(isolationLevel, default, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 #endif
@@ -969,7 +980,7 @@ namespace MySqlConnector
 				m_cachedProcedures = null;
 				if (m_session is not null)
 				{
-					await m_session.ReturnToPoolAsync();
+					await m_session.ReturnToPoolAsync(ioBehavior).ConfigureAwait(false);
 					m_session = null;
 				}
 				else
@@ -979,11 +990,10 @@ namespace MySqlConnector
 				if (changeState)
 					SetState(ConnectionState.Closed);
 
-				await Utility.CompletedTask;
 				return;
 			}
 			Log.Debug("Closing connection with Session{0}", m_session?.Id);
-			await DoCloseAsync(changeState, ioBehavior);
+			await DoCloseAsync(changeState, ioBehavior).ConfigureAwait(false);
 		}
 
 		private async Task DoCloseAsync(bool changeState, IOBehavior ioBehavior)
@@ -1046,7 +1056,7 @@ namespace MySqlConnector
 					if (GetInitializedConnectionSettings().Pooling)
 					{
 						Log.Debug("Returning current connection's Session{0} to pool.", currentSession.Id);
-						await currentSession.ReturnToPoolAsync().ConfigureAwait(false);
+						await m_session.ReturnToPoolAsync(ioBehavior).ConfigureAwait(false);
 					}
 					else
 					{

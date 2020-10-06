@@ -305,6 +305,7 @@ namespace MySqlConnector
 		internal async Task<int> ExecuteNonQueryAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			this.ResetCommandTimeout();
+			using var registration = ((ICancellableCommand) this).RegisterCancel(cancellationToken);
 			using var reader = await ExecuteReaderNoResetTimeoutAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
 			do
 			{
@@ -321,6 +322,7 @@ namespace MySqlConnector
 		internal async Task<object?> ExecuteScalarAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			this.ResetCommandTimeout();
+			using var registration = ((ICancellableCommand) this).RegisterCancel(cancellationToken);
 			var hasSetResult = false;
 			object? result = null;
 			using var reader = await ExecuteReaderNoResetTimeoutAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -346,10 +348,11 @@ namespace MySqlConnector
 		protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken) =>
 			await ExecuteReaderAsync(behavior, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 
-		internal Task<MySqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
+		internal async Task<MySqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			this.ResetCommandTimeout();
-			return ExecuteReaderNoResetTimeoutAsync(behavior, ioBehavior, cancellationToken);
+			using var registration = ((ICancellableCommand) this).RegisterCancel(cancellationToken);
+			return await ExecuteReaderNoResetTimeoutAsync(behavior, ioBehavior, cancellationToken).ConfigureAwait(false);
 		}
 
 		internal Task<MySqlDataReader> ExecuteReaderNoResetTimeoutAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
@@ -403,6 +406,18 @@ namespace MySqlConnector
 
 			m_cancelAction ??= TryCancel;
 			return token.Register(m_cancelAction);
+		}
+
+		void ICancellableCommand.SetTimeout(int milliseconds)
+		{
+			if (m_cancelTimerId != 0)
+				TimerQueue.Instance.Remove(m_cancelTimerId);
+
+			if (milliseconds != Constants.InfiniteTimeout)
+			{
+				m_cancelAction ??= Cancel;
+				m_cancelTimerId = TimerQueue.Instance.Add(milliseconds, m_cancelAction);
+			}
 		}
 
 		int ICancellableCommand.CommandId => m_commandId;

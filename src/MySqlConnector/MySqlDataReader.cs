@@ -37,20 +37,23 @@ namespace MySqlConnector
 			return m_resultSet!.Read();
 		}
 
-		public override Task<bool> ReadAsync(CancellationToken cancellationToken)
+		public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
 		{
 			VerifyNotDisposed();
 			Command!.CancellableCommand.ResetCommandTimeout();
-			return m_resultSet!.ReadAsync(cancellationToken);
+			using var registration = Command.CancellableCommand.RegisterCancel(cancellationToken);
+			return await m_resultSet!.ReadAsync(cancellationToken).ConfigureAwait(false);
 		}
 
 		internal Task<bool> ReadAsync(IOBehavior ioBehavior, CancellationToken cancellationToken) =>
 			m_resultSet!.ReadAsync(ioBehavior, cancellationToken);
 
-		public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
+		public override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
 		{
-			Command?.CancellableCommand.ResetCommandTimeout();
-			return NextResultAsync(Command?.Connection?.AsyncIOBehavior ?? IOBehavior.Asynchronous, cancellationToken);
+			VerifyNotDisposed();
+			Command!.CancellableCommand.ResetCommandTimeout();
+			using var registration = Command.CancellableCommand.RegisterCancel(cancellationToken);
+			return await NextResultAsync(Command?.Connection?.AsyncIOBehavior ?? IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
 		}
 
 		internal async Task<bool> NextResultAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
@@ -83,7 +86,7 @@ namespace MySqlConnector
 									using var payload = writer.ToPayloadData();
 									await Command.Connection.Session.SendAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 									await m_resultSet.ReadResultSetHeaderAsync(ioBehavior).ConfigureAwait(false);
-									ActivateResultSet();
+									ActivateResultSet(cancellationToken);
 									m_hasMoreResults = true;
 								}
 							}
@@ -91,7 +94,7 @@ namespace MySqlConnector
 					}
 					else
 					{
-						ActivateResultSet();
+						ActivateResultSet(cancellationToken);
 					}
 				}
 				while (m_hasMoreResults && (Command!.CommandBehavior & (CommandBehavior.SingleResult | CommandBehavior.SingleRow)) != 0);
@@ -114,7 +117,7 @@ namespace MySqlConnector
 			}
 		}
 
-		private void ActivateResultSet()
+		private void ActivateResultSet(CancellationToken cancellationToken)
 		{
 			if (m_resultSet!.ReadResultSetHeaderException is not null)
 			{
@@ -125,8 +128,8 @@ namespace MySqlConnector
 				if (mySqlException?.SqlState is null)
 					Command!.Connection!.SetSessionFailed(m_resultSet.ReadResultSetHeaderException);
 
-				throw mySqlException is not null ?
-					new MySqlException(mySqlException.ErrorCode, mySqlException.SqlState, mySqlException.Message, mySqlException) :
+				throw mySqlException?.ErrorCode == MySqlErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested ? new OperationCanceledException(mySqlException.Message, mySqlException, cancellationToken) :
+					mySqlException is not null ? new MySqlException(mySqlException.ErrorCode, mySqlException.SqlState, mySqlException.Message, mySqlException) :
 					new MySqlException("Failed to read the result set.", m_resultSet.ReadResultSetHeaderException);
 			}
 
@@ -438,7 +441,7 @@ namespace MySqlConnector
 			try
 			{
 				await dataReader.m_resultSet!.ReadResultSetHeaderAsync(ioBehavior).ConfigureAwait(false);
-				dataReader.ActivateResultSet();
+				dataReader.ActivateResultSet(cancellationToken);
 				dataReader.m_hasMoreResults = true;
 				Log.Debug("Read resultset header for command {0} on Session{1}.", command?.CommandText, command?.Connection?.Session.Id);
 
@@ -599,8 +602,9 @@ namespace MySqlConnector
 
 					m_hasMoreResults = false;
 
-					var connection = Command!.Connection!;
-					connection.FinishQuerying(m_hasWarnings);
+				var connection = Command!.Connection!;
+				Command.CancellableCommand.SetTimeout(Constants.InfiniteTimeout);
+				connection.FinishQuerying(m_hasWarnings);
 
 					if ((m_behavior & CommandBehavior.CloseConnection) != 0)
 						await connection.CloseAsync(ioBehavior).ConfigureAwait(false);
