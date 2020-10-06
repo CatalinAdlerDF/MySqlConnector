@@ -37,7 +37,7 @@ namespace MySqlConnector.Core
 				await CreateMinimumPooledSessions(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// wait for an open slot (until the cancellationToken is cancelled, which is typically due to timeout)
-			Log.Debug("Pool{0} waiting for an available session. Available count {1}.", m_logArguments[0], AvailableCount);
+			Log.Debug("Pool{0} waiting for an available session. Available count {1}; leases sessions {2}.", m_logArguments[0], AvailableCount, m_leasedSessions.Count);
 			if (ioBehavior == IOBehavior.Asynchronous)
 				await m_sessionSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 			else
@@ -275,6 +275,7 @@ namespace MySqlConnector.Core
 								return;
 
 					// try to get an open slot; if this fails, connection pool is full and sessions will be disposed when returned to pool
+					Log.Debug("Pool{0} waiting for an available session for cleanup. Available count {1}; leases sessions {2}.", m_logArguments[0], AvailableCount, m_leasedSessions.Count);
 					if (ioBehavior == IOBehavior.Asynchronous)
 					{
 						if (!await m_sessionSemaphore.WaitAsync(waitTimeout, cancellationToken).ConfigureAwait(false))
@@ -340,6 +341,7 @@ namespace MySqlConnector.Core
 
 				// acquire the semaphore, to ensure that the maximum number of sessions isn't exceeded; if it can't be acquired,
 				// we have reached the maximum number of sessions and no more need to be created
+				Log.Debug("Pool{0} waiting for an available session for ensuring min sessions. Available count {1}; leases sessions {2}.", m_logArguments[0], AvailableCount, m_leasedSessions.Count);
 				if (ioBehavior == IOBehavior.Asynchronous)
 				{
 					if (!await m_sessionSemaphore.WaitAsync(0, cancellationToken).ConfigureAwait(false))
