@@ -37,7 +37,7 @@ namespace MySqlConnector.Core
 				await CreateMinimumPooledSessions(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// wait for an open slot (until the cancellationToken is cancelled, which is typically due to timeout)
-			Log.Debug("Pool{0} waiting for an available session", m_logArguments);
+			Log.Debug("Pool{0} waiting for an available session. Available count {1}.", m_logArguments, this.AvailableCount);
 			if (ioBehavior == IOBehavior.Asynchronous)
 				await m_sessionSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 			else
