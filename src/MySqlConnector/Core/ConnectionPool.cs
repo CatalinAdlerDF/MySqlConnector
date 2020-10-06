@@ -406,6 +406,7 @@ namespace MySqlConnector.Core
 			}
 
 			// create a new pool and attempt to insert it; if someone else beats us to it, just use their value
+			Log.Debug("Creating new pool for {0}. Existing pools {1}.", connectionStringBuilder.ConnectionString, string.Join(", ", s_pools.Keys));
 			var connectionSettings = new ConnectionSettings(connectionStringBuilder);
 			var newPool = new ConnectionPool(connectionSettings);
 			pool = s_pools.GetOrAdd(normalizedConnectionString, newPool);
