@@ -462,5 +462,6 @@ namespace MySqlConnector
 		CommandBehavior m_commandBehavior;
 		Action? m_cancelAction;
 		DateTimeOffset? executingSince;
+		uint m_cancelTimerId;
 	}
 }

@@ -22,9 +22,10 @@ namespace MySqlConnector.Core
 
 			// pre-requisite: Connection is non-null must be checked before calling this method
 			var connection = command.Connection!;
+			var sessionId = connection.Session.Id;
 
 			if (Log.IsDebugEnabled())
-				Log.Debug("Session{0} ExecuteReader {1} CommandCount: {2}", connection.Session.Id, ioBehavior, commands.Count);
+				Log.Debug("Session{0} ExecuteReader {1} CommandCount: {2}", sessionId, ioBehavior, commands.Count);
 
 			Dictionary<string, CachedProcedure?>? cachedProcedures = null;
 			foreach (var command2 in commands)

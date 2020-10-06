@@ -1056,7 +1056,7 @@ namespace MySqlConnector
 					if (GetInitializedConnectionSettings().Pooling)
 					{
 						Log.Debug("Returning current connection's Session{0} to pool.", currentSession.Id);
-						await m_session.ReturnToPoolAsync(ioBehavior).ConfigureAwait(false);
+						await currentSession.ReturnToPoolAsync(ioBehavior).ConfigureAwait(false);
 					}
 					else
 					{
