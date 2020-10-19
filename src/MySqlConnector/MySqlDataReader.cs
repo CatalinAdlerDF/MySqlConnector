@@ -128,9 +128,13 @@ namespace MySqlConnector
 				if (mySqlException?.SqlState is null)
 					Command!.Connection!.SetSessionFailed(m_resultSet.ReadResultSetHeaderException);
 
-				throw mySqlException?.ErrorCode == MySqlErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested ? new OperationCanceledException(mySqlException.Message, mySqlException, cancellationToken) :
-					mySqlException is not null ? new MySqlException(mySqlException.ErrorCode, mySqlException.SqlState, mySqlException.Message, mySqlException) :
-					new MySqlException("Failed to read the result set.", m_resultSet.ReadResultSetHeaderException);
+				if (mySqlException?.ErrorCode == MySqlErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested)
+					throw new OperationCanceledException(mySqlException.Message, mySqlException, cancellationToken);
+
+				if (mySqlException is not null)
+					throw new MySqlException(mySqlException.ErrorCode, mySqlException.SqlState, mySqlException.Message, mySqlException);
+
+				throw new MySqlException("Failed to read the result set.", m_resultSet.ReadResultSetHeaderException);
 			}
 
 			Command!.SetLastInsertedId(m_resultSet.LastInsertId);
@@ -303,13 +307,7 @@ namespace MySqlConnector
 		/// Returns a <see cref="DataTable"/> that contains metadata about the columns in the result set.
 		/// </summary>
 		/// <returns>A <see cref="DataTable"/> containing metadata about the columns in the result set.</returns>
-#if NET5_0
-#pragma warning disable 8764 // https://github.com/dotnet/runtime/pull/41082 should be fixed in RC1
-#endif
 		public override DataTable? GetSchemaTable() => m_schemaTable ??= BuildSchemaTable();
-#if NET5_0
-#pragma warning restore
-#endif
 
 		/// <summary>
 		/// Returns a <see cref="DataTable"/> that contains metadata about the columns in the result set.
@@ -317,12 +315,10 @@ namespace MySqlConnector
 		/// <param name="cancellationToken">A token to cancel the operation.</param>
 		/// <returns>A <see cref="DataTable"/> containing metadata about the columns in the result set.</returns>
 		/// <remarks>This method runs synchronously; prefer to call <see cref="GetSchemaTable"/> to avoid the overhead of allocating an unnecessary <c>Task</c>.</remarks>
-#if NET45 || NET461 || NET471 || NETSTANDARD1_3 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP2_1 || (NETCOREAPP3_1 && !NET5_0)
+#if NET45 || NET461 || NET471 || NETSTANDARD1_3 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP2_1 || NETCOREAPP3_1
 		public Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #else
-#pragma warning disable 8609 // https://github.com/dotnet/runtime/pull/41082 should be fixed in RC1
 		public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
-#pragma warning restore
 #endif
 		{
 			cancellationToken.ThrowIfCancellationRequested();
@@ -352,7 +348,7 @@ namespace MySqlConnector
 		/// <param name="cancellationToken">A token to cancel the operation.</param>
 		/// <returns>A <see cref="Task"/> containing <see cref="System.Collections.ObjectModel.ReadOnlyCollection{DbColumn}"/> containing metadata about the result set.</returns>
 		/// <remarks>This method runs synchronously; prefer to call <see cref="GetColumnSchema"/> to avoid the overhead of allocating an unnecessary <c>Task</c>.</remarks>
-#if NET45 || NET461 || NET471 || NETSTANDARD1_3 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP2_1 || (NETCOREAPP3_1 && !NET5_0)
+#if NET45 || NET461 || NET471 || NETSTANDARD1_3 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP2_1 || NETCOREAPP3_1
 		public Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
 #else
 		public override Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
