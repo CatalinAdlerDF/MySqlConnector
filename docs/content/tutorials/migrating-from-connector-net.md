@@ -187,7 +187,7 @@ The following bugs in Connector/NET are fixed by switching to MySqlConnector. (~
 * [#72494](https://bugs.mysql.com/bug.php?id=72494), [#83330](https://bugs.mysql.com/bug.php?id=83330): EndOfStreamException inserting large blob with UseCompression=True
 * [#73610](https://bugs.mysql.com/bug.php?id=73610): Invalid password exception has wrong number
 * [#73788](https://bugs.mysql.com/bug.php?id=73788): Can’t use `DateTimeOffset`
-* [#75604](https://bugs.mysql.com/bug.php?id=75604): Crash after 29.4 days of uptime
+* ~~[#75604](https://bugs.mysql.com/bug.php?id=75604): Crash after 29.4 days of uptime~~
 * [#75917](https://bugs.mysql.com/bug.php?id=75917), [#76597](https://bugs.mysql.com/bug.php?id=76597), [#77691](https://bugs.mysql.com/bug.php?id=77691), [#78650](https://bugs.mysql.com/bug.php?id=78650), [#78919](https://bugs.mysql.com/bug.php?id=78919), [#80921](https://bugs.mysql.com/bug.php?id=80921), [#82136](https://bugs.mysql.com/bug.php?id=82136): “Reading from the stream has failed” when connecting to a server
 * [#77421](https://bugs.mysql.com/bug.php?id=77421): Connection is not reset when pulled from the connection pool
 * [#78426](https://bugs.mysql.com/bug.php?id=78426): Unknown database exception has wrong number
@@ -200,9 +200,9 @@ The following bugs in Connector/NET are fixed by switching to MySqlConnector. (~
 * [#84220](https://bugs.mysql.com/bug.php?id=84220): Cannot call a stored procedure with `.` in its name
 * [#84701](https://bugs.mysql.com/bug.php?id=84701): Can’t create a parameter using a 64-bit enum with a value greater than int.MaxValue
 * [#85185](https://bugs.mysql.com/bug.php?id=85185): `ConnectionReset=True` does not preserve connection charset
-* [#86263](https://bugs.mysql.com/bug.php?id=86263): Transaction isolation level affects all transactions in session
+* ~~[#86263](https://bugs.mysql.com/bug.php?id=86263): Transaction isolation level affects all transactions in session~~
 * ~~[#87307](https://bugs.mysql.com/bug.php?id=87307): NextResult hangs instead of timing out~~
-* [#87316](https://bugs.mysql.com/bug.php?id=87316): MySqlCommand.CommandTimeout can be set to a negative value
+* ~~[#87316](https://bugs.mysql.com/bug.php?id=87316): MySqlCommand.CommandTimeout can be set to a negative value~~
 * ~~[#87868](https://bugs.mysql.com/bug.php?id=87868): `ColumnSize` in schema table is incorrect for `CHAR(36)` and `BLOB` columns~~
 * ~~[#87876](https://bugs.mysql.com/bug.php?id=87876): `IsLong` is schema table is incorrect for `LONGTEXT` and `LONGBLOB` columns~~
 * ~~[#88058](https://bugs.mysql.com/bug.php?id=88058): `decimal(n, 0)` has wrong `NumericPrecision`~~
@@ -213,7 +213,7 @@ The following bugs in Connector/NET are fixed by switching to MySqlConnector. (~
 * [#89085](https://bugs.mysql.com/bug.php?id=89085): `MySqlConnection.Database` not updated after `USE database;`
 * ~~[#89159](https://bugs.mysql.com/bug.php?id=89159), [#97242](https://bugs.mysql.com/bug.php?id=97242): `MySqlDataReader` cannot outlive `MySqlCommand`~~
 * [#89335](https://bugs.mysql.com/bug.php?id=89335): `MySqlCommandBuilder.DeriveParameters` fails for `JSON` type
-* [#89639](https://bugs.mysql.com/bug.php?id=89639): `ReservedWords` schema contains incorrect data
+* ~~[#89639](https://bugs.mysql.com/bug.php?id=89639): `ReservedWords` schema contains incorrect data~~
 * ~~[#90086](https://bugs.mysql.com/bug.php?id=90086): `MySqlDataReader` is closed by an unrelated command disposal~~
 * [#91123](https://bugs.mysql.com/bug.php?id=91123): Database names are case-sensitive when calling a stored procedure
 * [#91199](https://bugs.mysql.com/bug.php?id=91199): Can't insert `MySqlDateTime` values
@@ -227,7 +227,7 @@ The following bugs in Connector/NET are fixed by switching to MySqlConnector. (~
 * [#92734](https://bugs.mysql.com/bug.php?id=92734): `MySqlParameter.Clone` doesn't copy all property values
 * [#92789](https://bugs.mysql.com/bug.php?id=92789): Illegal connection attributes written for non-ASCII values
 * ~~[#92912](https://bugs.mysql.com/bug.php?id=92912): `MySqlDbType.LongText` values encoded incorrectly with prepared statements~~
-* [#92982](https://bugs.mysql.com/bug.php?id=92982), [#93399](https://bugs.mysql.com/bug.php?id=93399): `FormatException` thrown when connecting to MySQL Server 8.0.13
+* ~~[#92982](https://bugs.mysql.com/bug.php?id=92982), [#93399](https://bugs.mysql.com/bug.php?id=93399)~~: `FormatException` thrown when connecting to MySQL Server 8.0.13~~
 * [#93047](https://bugs.mysql.com/bug.php?id=93047): `MySqlDataAdapter` throws timeout exception when an error occurs
 * ~~[#93202](https://bugs.mysql.com/bug.php?id=93202): Connector runs `SHOW VARIABLES` when connection is made~~
 * [#93220](https://bugs.mysql.com/bug.php?id=93220): Can’t call FUNCTION when parameter name contains parentheses
@@ -254,7 +254,11 @@ The following bugs in Connector/NET are fixed by switching to MySqlConnector. (~
 * [#97872](https://bugs.mysql.com/bug.php?id=97872): `KeepAlive` in connection string throws exception on .NET Core
 * ~~[#98322](https://bugs.mysql.com/bug.php?id=98322): `new MySqlConnection(null)` throws `NullReferenceException`~~
 * [#99091](https://bugs.mysql.com/bug.php?id=99091): Unexpected return value getting integer for `TINYINT(1)` column
-* [#99793](https://bugs.mysql.com/bug.php?id=99793): Prepared stored procedure command doesn't verify parameter types
-* [#100159](https://bugs.mysql.com/bug.php?id=100159): SQL with DateTime parameter returns String value
-* [#100208](https://bugs.mysql.com/bug.php?id=100208): `GetSchema("Procedures")` returns `ROUTINE_DEFINITION` of `"System.Byte[]"`
-* [#100218](https://bugs.mysql.com/bug.php?id=100218): `TIME(n)` microsecond values deserialized incorrectly with prepared command
+* ~~[#99793](https://bugs.mysql.com/bug.php?id=99793): Prepared stored procedure command doesn't verify parameter types~~
+* ~~[#100159](https://bugs.mysql.com/bug.php?id=100159): SQL with DateTime parameter returns String value~~
+* ~~[#100208](https://bugs.mysql.com/bug.php?id=100208): `GetSchema("Procedures")` returns `ROUTINE_DEFINITION` of `"System.Byte[]"`~~
+* ~~[#100218](https://bugs.mysql.com/bug.php?id=100218): `TIME(n)` microsecond values deserialized incorrectly with prepared command~~
+* ~~[#100306](https://bugs.mysql.com/bug.php?id=100306): `Command.Prepare` sends wrong statement to server~~
+* [#101252](https://bugs.mysql.com/bug.php?id=101252): Can't query `CHAR(36)` column containing `NULL`
+* [#101253](https://bugs.mysql.com/bug.php?id=101253): Default value for `MySqlParameter.Value` changed from null to `0`
+* [#101302](https://bugs.mysql.com/bug.php?id=101302): Stored Procedure `BOOL` parameter can only be mapped to `MySqlDbType.Byte`
